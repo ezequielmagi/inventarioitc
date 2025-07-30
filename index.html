@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Inventario</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .tab-button.active {
+            border-color: #4f46e5;
+            color: #4f46e5;
+            background-color: #eef2ff;
+        }
+        .modal {
+            display: none;
+        }
+        .modal.flex {
+            display: flex;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        #app-container, #auth-container {
+            display: none;
+        }
+    </style>
+</head>
+<body class="antialiased text-gray-800">
+
+    <!-- Auth Container -->
+    <div id="auth-container" class="min-h-screen flex items-center justify-center bg-gray-100">
+        <div class="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md">
+            <div>
+                <h2 id="auth-title" class="text-2xl font-bold text-center">Iniciar Sesión</h2>
+                <p class="text-center text-gray-600">para acceder a tu inventario</p>
+            </div>
+            <form id="loginForm" class="space-y-6">
+                <div class="relative">
+                    <input id="loginEmail" type="email" placeholder="Correo Electrónico" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                </div>
+                <div class="relative">
+                    <input id="loginPassword" type="password" placeholder="Contraseña" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                </div>
+                <button type="submit" class="w-full py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg">Iniciar Sesión</button>
+            </form>
+            <form id="registerForm" class="hidden space-y-6">
+                <div class="relative">
+                    <input id="registerEmail" type="email" placeholder="Correo Electrónico" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                </div>
+                <div class="relative">
+                    <input id="registerPassword" type="password" placeholder="Contraseña (mín. 6 caracteres)" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                </div>
+                <button type="submit" class="w-full py-2 px-4 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg">Crear Cuenta</button>
+            </form>
+            <div id="auth-error" class="text-red-500 text-sm text-center"></div>
+            <div class="text-center">
+                <a href="#" id="toggleAuth" class="text-indigo-600 hover:underline">¿No tienes una cuenta? Regístrate</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App Container -->
+    <div id="app-container" class="container mx-auto p-4 sm:p-6 lg:p-8">
+        <header class="mb-8 flex justify-between items-start">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">Sistema de Gestión de Inventario</h1>
+                <p class="text-gray-600 mt-1">Administra tus equipos, monitores y asignaciones.</p>
+                <div id="auth-info" class="mt-2 text-sm text-gray-500"></div>
+            </div>
+            <button id="logoutButton" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105">
+                <i class="fas fa-sign-out-alt mr-2"></i>Salir
+            </button>
+        </header>
+        <div class="mb-6 border-b border-gray-200">
+            <nav class="flex space-x-4" aria-label="Tabs">
+                <button id="tab-equipos" class="tab-button active shrink-0 border-b-2 font-medium px-4 py-3 text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                    <i class="fas fa-desktop mr-2"></i>Equipos
+                </button>
+                <button id="tab-monitores" class="tab-button shrink-0 border-b-2 font-medium px-4 py-3 text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                    <i class="fas fa-tv mr-2"></i>Monitores
+                </button>
+                <button id="tab-ciudades" class="tab-button shrink-0 border-b-2 font-medium px-4 py-3 text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                    <i class="fas fa-map-marker-alt mr-2"></i>Asignaciones
+                </button>
+            </nav>
+        </div>
+        <main>
+            <div id="content-equipos" class="space-y-6">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-2xl font-semibold">Inventario de Equipos</h2>
+                    <button onclick="openModal('equipoModal')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105">
+                        <i class="fas fa-plus mr-2"></i>Añadir Equipo
+                    </button>
+                </div>
+                <div id="equipos-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"></div>
+            </div>
+            <div id="content-monitores" class="hidden space-y-6">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-2xl font-semibold">Inventario de Monitores</h2>
+                    <button onclick="openModal('monitorModal')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105">
+                        <i class="fas fa-plus mr-2"></i>Añadir Monitor
+                    </button>
+                </div>
+                <div id="monitores-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"></div>
+            </div>
+            <div id="content-ciudades" class="hidden space-y-6">
+                 <div class="flex justify-between items-center">
+                    <h2 class="text-2xl font-semibold">Asignaciones por Ciudad</h2>
+                    <button onclick="openModal('ciudadModal')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105">
+                        <i class="fas fa-plus mr-2"></i>Crear Asignación
+                    </button>
+                </div>
+                <div class="bg-white shadow-md rounded-lg overflow-x-auto">
+                    <table class="w-full text-sm text-left text-gray-500">
+                        <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3">Ciudad</th>
+                                <th scope="col" class="px-6 py-3">Instructor</th>
+                                <th scope="col" class="px-6 py-3">Fechas</th>
+                                <th scope="col" class="px-6 py-3">Recursos</th>
+                                <th scope="col" class="px-6 py-3">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ciudades-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="equipoModal" class="modal fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full items-center justify-center">
+        <div class="relative mx-auto p-5 border w-full max-w-lg shadow-lg rounded-md bg-white">
+            <div class="flex justify-between items-center pb-3 border-b">
+                <h3 id="equipoModalTitle" class="text-2xl font-bold">Añadir Equipo</h3>
+                <button onclick="closeModal('equipoModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times fa-lg"></i></button>
+            </div>
+            <form id="equipoForm" class="mt-5 space-y-4">
+                <input type="hidden" id="equipoId">
+                <input id="equipoCodigo" type="text" placeholder="Código" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                <input id="equipoMother" type="text" placeholder="Motherboard" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                <input id="equipoMicro" type="text" placeholder="Microprocesador" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                <input id="equipoRam" type="text" placeholder="RAM" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                <input id="equipoAlmacenamiento" type="text" placeholder="Almacenamiento" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                <input id="equipoFoto" type="url" placeholder="URL de la Foto" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <div class="flex justify-end space-x-3 pt-3">
+                    <button type="button" onclick="closeModal('equipoModal')" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg">Cancelar</button>
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="monitorModal" class="modal fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full items-center justify-center">
+        <div class="relative mx-auto p-5 border w-full max-w-lg shadow-lg rounded-md bg-white">
+            <div class="flex justify-between items-center pb-3 border-b">
+                <h3 id="monitorModalTitle" class="text-2xl font-bold">Añadir Monitor</h3>
+                 <button onclick="closeModal('monitorModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times fa-lg"></i></button>
+            </div>
+            <form id="monitorForm" class="mt-5 space-y-4">
+                <input type="hidden" id="monitorId">
+                <input id="monitorCodigo" type="text" placeholder="Código" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                <input id="monitorMarca" type="text" placeholder="Marca" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                <input id="monitorModelo" type="text" placeholder="Modelo" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                <input id="monitorFoto" type="url" placeholder="URL de la Foto" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <div class="flex justify-end space-x-3 pt-3">
+                    <button type="button" onclick="closeModal('monitorModal')" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg">Cancelar</button>
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="ciudadModal" class="modal fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full items-center justify-center">
+        <div class="relative mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
+             <div class="flex justify-between items-center pb-3 border-b">
+                <h3 id="ciudadModalTitle" class="text-2xl font-bold">Crear Asignación</h3>
+                 <button onclick="closeModal('ciudadModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times fa-lg"></i></button>
+            </div>
+            <form id="ciudadForm" class="mt-5 space-y-4">
+                <input type="hidden" id="ciudadId">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input id="ciudadNombre" type="text" placeholder="Nombre de la Ciudad" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                    <input id="ciudadInstructor" type="text" placeholder="Instructor" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                    <div>
+                        <label for="ciudadFechaInicio" class="block text-sm font-medium text-gray-700">Fecha Inicio</label>
+                        <input id="ciudadFechaInicio" type="date" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                    </div>
+                    <div>
+                        <label for="ciudadFechaFin" class="block text-sm font-medium text-gray-700">Fecha Fin</label>
+                        <input id="ciudadFechaFin" type="date" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Asignar Equipos</label>
+                        <div id="ciudadEquiposList" class="h-48 overflow-y-auto border rounded-lg p-2 custom-scrollbar"></div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Asignar Monitores</label>
+                        <div id="ciudadMonitoresList" class="h-48 overflow-y-auto border rounded-lg p-2 custom-scrollbar"></div>
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-3 pt-3">
+                    <button type="button" onclick="closeModal('ciudadModal')" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg">Cancelar</button>
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg">Guardar Asignación</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="deleteModal" class="modal fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full items-center justify-center">
+        <div class="relative mx-auto p-8 border w-full max-w-md shadow-lg rounded-md bg-white">
+            <h3 class="text-xl font-bold text-center">Confirmar Eliminación</h3>
+            <p class="text-gray-600 text-center mt-4">¿Estás seguro de que quieres eliminar este elemento? Esta acción no se puede deshacer.</p>
+            <div class="flex justify-center space-x-4 mt-8">
+                <button id="cancelDelete" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg">Cancelar</button>
+                <button id="confirmDelete" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg">Eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, addDoc, onSnapshot, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- ¡MUY IMPORTANTE! Asegúrate de que TU configuración de Firebase esté aquí. NO BORRES ESTO. ---
+        const firebaseConfig = {
+apiKey: "AIzaSyDfoR73Om2Gwpr5Dd8v_RNXCElKPvwq44s",
+    authDomain: "inventarioitc-64b85.firebaseapp.com",
+    projectId: "inventarioitc-64b85",
+    storageBucket: "inventarioitc-64b85.firebasestorage.app",
+    messagingSenderId: "516464637240",
+    appId: "1:516464637240:web:359b00d04287d52ce4bdcd"
+
+        };
+        // ------------------------------------------------------------------------------------------------
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        const authContainer = document.getElementById('auth-container');
+        const appContainer = document.getElementById('app-container');
+        const authInfo = document.getElementById('auth-info');
+        const logoutButton = document.getElementById('logoutButton');
+        const loginForm = document.getElementById('loginForm');
+        const registerForm = document.getElementById('registerForm');
+        const authError = document.getElementById('auth-error');
+        const toggleAuthLink = document.getElementById('toggleAuth');
+        const authTitle = document.getElementById('auth-title');
+
+        let userId = null;
+        let dbPaths = {};
+        let unsubscribeListeners = [];
+
+        onAuthStateChanged(auth, (user) => {
+            unsubscribeListeners.forEach(unsub => unsub());
+            unsubscribeListeners = [];
+
+            if (user) {
+                userId = user.uid;
+                authInfo.textContent = `Conectado como: ${user.email}`;
+                
+                // --- CORRECCIÓN IMPORTANTE ---
+                // Esta es la estructura de ruta correcta y estándar para la base de datos.
+                dbPaths.equipos = `users/${userId}/equipos`;
+                dbPaths.monitores = `users/${userId}/monitores`;
+                dbPaths.ciudades = `users/${userId}/ciudades`;
+                // ---------------------------
+
+                appContainer.style.display = 'block';
+                authContainer.style.display = 'none';
+                setupListeners();
+            } else {
+                userId = null;
+                appContainer.style.display = 'none';
+                authContainer.style.display = 'flex';
+                clearDataGrids();
+            }
+        });
+
+        toggleAuthLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            const isLogin = loginForm.classList.contains('hidden');
+            if (isLogin) {
+                loginForm.classList.remove('hidden');
+                registerForm.classList.add('hidden');
+                authTitle.textContent = 'Iniciar Sesión';
+                toggleAuthLink.textContent = '¿No tienes una cuenta? Regístrate';
+            } else {
+                loginForm.classList.add('hidden');
+                registerForm.classList.remove('hidden');
+                authTitle.textContent = 'Crear Cuenta';
+                toggleAuthLink.textContent = '¿Ya tienes una cuenta? Inicia Sesión';
+            }
+            authError.textContent = '';
+        });
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                authError.textContent = '';
+            } catch (error) {
+                authError.textContent = 'Error: ' + error.message;
+            }
+        });
+
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+            try {
+                await createUserWithEmailAndPassword(auth, email, password);
+                 authError.textContent = '';
+            } catch (error) {
+                authError.textContent = 'Error: ' + error.message;
+            }
+        });
+
+        logoutButton.addEventListener('click', async () => {
+            await signOut(auth);
+        });
+
+        let allEquipos = [];
+        let allMonitores = [];
+        let deleteHandler = null;
+
+        const tabs = document.querySelectorAll('.tab-button');
+        const contents = {
+            'tab-equipos': document.getElementById('content-equipos'),
+            'tab-monitores': document.getElementById('content-monitores'),
+            'tab-ciudades': document.getElementById('content-ciudades'),
+        };
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                Object.values(contents).forEach(c => c.classList.add('hidden'));
+                contents[tab.id].classList.remove('hidden');
+            });
+        });
+
+        window.openModal = (modalId, data = {}) => {
+            const modal = document.getElementById(modalId);
+            modal.classList.add('flex');
+            
+            if (modalId === 'equipoModal') {
+                document.getElementById('equipoForm').reset();
+                document.getElementById('equipoId').value = data.id || '';
+                document.getElementById('equipoModalTitle').textContent = data.id ? 'Editar Equipo' : 'Añadir Equipo';
+                if (data.id) {
+                    document.getElementById('equipoCodigo').value = data.codigo;
+                    document.getElementById('equipoMother').value = data.mother;
+                    document.getElementById('equipoMicro').value = data.micro;
+                    document.getElementById('equipoRam').value = data.ram;
+                    document.getElementById('equipoAlmacenamiento').value = data.almacenamiento;
+                    document.getElementById('equipoFoto').value = data.fotoUrl;
+                }
+            } else if (modalId === 'monitorModal') {
+                document.getElementById('monitorForm').reset();
+                document.getElementById('monitorId').value = data.id || '';
+                document.getElementById('monitorModalTitle').textContent = data.id ? 'Editar Monitor' : 'Añadir Monitor';
+                 if (data.id) {
+                    document.getElementById('monitorCodigo').value = data.codigo;
+                    document.getElementById('monitorMarca').value = data.marca;
+                    document.getElementById('monitorModelo').value = data.modelo;
+                    document.getElementById('monitorFoto').value = data.fotoUrl;
+                }
+            } else if (modalId === 'ciudadModal') {
+                document.getElementById('ciudadForm').reset();
+                document.getElementById('ciudadId').value = data.id || '';
+                document.getElementById('ciudadModalTitle').textContent = data.id ? 'Editar Asignación' : 'Crear Asignación';
+                populateAsignacionCheckboxes(data.equiposIds || [], data.monitoresIds || []);
+                if (data.id) {
+                    document.getElementById('ciudadNombre').value = data.ciudad;
+                    document.getElementById('ciudadInstructor').value = data.instructor;
+                    document.getElementById('ciudadFechaInicio').value = data.fechaInicio;
+                    document.getElementById('ciudadFechaFin').value = data.fechaFin;
+                }
+            }
+        };
+
+        window.closeModal = (modalId) => {
+            document.getElementById(modalId).classList.remove('flex');
+        };
+        
+        window.confirmDeletion = (collectionName, docId) => {
+            openModal('deleteModal');
+            deleteHandler = () => {
+                const docRef = doc(db, dbPaths[collectionName], docId);
+                deleteDoc(docRef);
+                closeModal('deleteModal');
+            };
+        };
+
+        document.getElementById('confirmDelete').addEventListener('click', () => {
+            if (deleteHandler) deleteHandler();
+            deleteHandler = null;
+        });
+        document.getElementById('cancelDelete').addEventListener('click', () => closeModal('deleteModal'));
+
+        const clearDataGrids = () => {
+            document.getElementById('equipos-grid').innerHTML = '';
+            document.getElementById('monitores-grid').innerHTML = '';
+            document.getElementById('ciudades-table-body').innerHTML = '';
+        };
+
+        const renderEquipos = (equipos) => {
+            allEquipos = equipos;
+            const grid = document.getElementById('equipos-grid');
+            grid.innerHTML = equipos.length ? '' : '<p class="text-gray-500 col-span-full">No hay equipos registrados.</p>';
+            equipos.forEach(equipo => {
+                const card = `
+                    <div class="bg-white rounded-lg shadow-md overflow-hidden transition-shadow hover:shadow-xl">
+                        <img src="${equipo.fotoUrl || 'https://placehold.co/400x300/e2e8f0/64748b?text=Equipo'}" alt="Foto de equipo" class="w-full h-48 object-cover" onerror="this.onerror=null;this.src='https://placehold.co/400x300/e2e8f0/64748b?text=Equipo';">
+                        <div class="p-4">
+                            <h3 class="font-bold text-lg">${equipo.codigo}</h3>
+                            <p class="text-sm text-gray-600">${equipo.mother}</p>
+                            <ul class="text-xs text-gray-500 mt-2 space-y-1">
+                                <li><strong>Micro:</strong> ${equipo.micro}</li>
+                                <li><strong>RAM:</strong> ${equipo.ram}</li>
+                                <li><strong>Almacenamiento:</strong> ${equipo.almacenamiento}</li>
+                            </ul>
+                            <div class="flex justify-end space-x-2 mt-4">
+                                <button onclick='openModal("equipoModal", ${JSON.stringify(equipo).replace(/'/g, "&apos;")})' class="text-blue-500 hover:text-blue-700"><i class="fas fa-edit"></i></button>
+                                <button onclick='confirmDeletion("equipos", "${equipo.id}")' class="text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                grid.innerHTML += card;
+            });
+        };
+
+        const renderMonitores = (monitores) => {
+            allMonitores = monitores;
+            const grid = document.getElementById('monitores-grid');
+            grid.innerHTML = monitores.length ? '' : '<p class="text-gray-500 col-span-full">No hay monitores registrados.</p>';
+            monitores.forEach(monitor => {
+                const card = `
+                    <div class="bg-white rounded-lg shadow-md overflow-hidden transition-shadow hover:shadow-xl">
+                        <img src="${monitor.fotoUrl || 'https://placehold.co/400x300/e2e8f0/64748b?text=Monitor'}" alt="Foto de monitor" class="w-full h-48 object-cover" onerror="this.onerror=null;this.src='https://placehold.co/400x300/e2e8f0/64748b?text=Monitor';">
+                        <div class="p-4">
+                            <h3 class="font-bold text-lg">${monitor.codigo}</h3>
+                            <p class="text-sm text-gray-600">${monitor.marca} - ${monitor.modelo}</p>
+                            <div class="flex justify-end space-x-2 mt-4">
+                                <button onclick='openModal("monitorModal", ${JSON.stringify(monitor).replace(/'/g, "&apos;")})' class="text-blue-500 hover:text-blue-700"><i class="fas fa-edit"></i></button>
+                                <button onclick='confirmDeletion("monitores", "${monitor.id}")' class="text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                grid.innerHTML += card;
+            });
+        };
+
+        const renderCiudades = (ciudades) => {
+            const tableBody = document.getElementById('ciudades-table-body');
+            tableBody.innerHTML = ciudades.length ? '' : '<tr><td colspan="5" class="text-center py-4 text-gray-500">No hay asignaciones registradas.</td></tr>';
+            ciudades.forEach(ciudad => {
+                const equiposAsignados = ciudad.equiposIds.length;
+                const monitoresAsignados = ciudad.monitoresIds.length;
+                const row = `
+                    <tr class="bg-white border-b hover:bg-gray-50">
+                        <td class="px-6 py-4 font-medium text-gray-900">${ciudad.ciudad}</td>
+                        <td class="px-6 py-4">${ciudad.instructor}</td>
+                        <td class="px-6 py-4">${ciudad.fechaInicio} al ${ciudad.fechaFin}</td>
+                        <td class="px-6 py-4">
+                            <span class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-indigo-600 bg-indigo-200">
+                                ${equiposAsignados} Equipos
+                            </span>
+                            <span class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-green-600 bg-green-200 ml-2">
+                                ${monitoresAsignados} Monitores
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 flex items-center space-x-3">
+                            <button onclick='openModal("ciudadModal", ${JSON.stringify(ciudad).replace(/'/g, "&apos;")})' class="text-blue-500 hover:text-blue-700"><i class="fas fa-edit"></i></button>
+                            <button onclick='confirmDeletion("ciudades", "${ciudad.id}")' class="text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+                tableBody.innerHTML += row;
+            });
+        };
+
+        const populateAsignacionCheckboxes = (selectedEquipos = [], selectedMonitores = []) => {
+            const equiposListDiv = document.getElementById('ciudadEquiposList');
+            equiposListDiv.innerHTML = '';
+            allEquipos.forEach(equipo => {
+                const checked = selectedEquipos.includes(equipo.id) ? 'checked' : '';
+                equiposListDiv.innerHTML += `
+                    <label class="flex items-center space-x-2 p-1 hover:bg-gray-100 rounded">
+                        <input type="checkbox" name="equipo" value="${equipo.id}" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-offset-0 focus:ring-indigo-200 focus:ring-opacity-50" ${checked}>
+                        <span>${equipo.codigo} (${equipo.mother})</span>
+                    </label>`;
+            });
+
+            const monitoresListDiv = document.getElementById('ciudadMonitoresList');
+            monitoresListDiv.innerHTML = '';
+            allMonitores.forEach(monitor => {
+                const checked = selectedMonitores.includes(monitor.id) ? 'checked' : '';
+                monitoresListDiv.innerHTML += `
+                    <label class="flex items-center space-x-2 p-1 hover:bg-gray-100 rounded">
+                        <input type="checkbox" name="monitor" value="${monitor.id}" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-offset-0 focus:ring-indigo-200 focus:ring-opacity-50" ${checked}>
+                        <span>${monitor.codigo} (${monitor.marca})</span>
+                    </label>`;
+            });
+        };
+
+        const setupListeners = () => {
+            if (!userId) return;
+            
+            const unsubEquipos = onSnapshot(collection(db, dbPaths.equipos), (snapshot) => {
+                const equipos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderEquipos(equipos);
+            });
+            unsubscribeListeners.push(unsubEquipos);
+
+            const unsubMonitores = onSnapshot(collection(db, dbPaths.monitores), (snapshot) => {
+                const monitores = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderMonitores(monitores);
+            });
+            unsubscribeListeners.push(unsubMonitores);
+            
+            const unsubCiudades = onSnapshot(collection(db, dbPaths.ciudades), (snapshot) => {
+                const ciudades = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderCiudades(ciudades);
+            });
+            unsubscribeListeners.push(unsubCiudades);
+        };
+
+        document.getElementById('equipoForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('equipoId').value;
+            const data = {
+                codigo: document.getElementById('equipoCodigo').value,
+                mother: document.getElementById('equipoMother').value,
+                micro: document.getElementById('equipoMicro').value,
+                ram: document.getElementById('equipoRam').value,
+                almacenamiento: document.getElementById('equipoAlmacenamiento').value,
+                fotoUrl: document.getElementById('equipoFoto').value,
+            };
+
+            if (id) {
+                await updateDoc(doc(db, dbPaths.equipos, id), data);
+            } else {
+                await addDoc(collection(db, dbPaths.equipos), data);
+            }
+            closeModal('equipoModal');
+        });
+
+        document.getElementById('monitorForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('monitorId').value;
+            const data = {
+                codigo: document.getElementById('monitorCodigo').value,
+                marca: document.getElementById('monitorMarca').value,
+                modelo: document.getElementById('monitorModelo').value,
+                fotoUrl: document.getElementById('monitorFoto').value,
+            };
+
+            if (id) {
+                await updateDoc(doc(db, dbPaths.monitores, id), data);
+            } else {
+                await addDoc(collection(db, dbPaths.monitores), data);
+            }
+            closeModal('monitorModal');
+        });
+
+        document.getElementById('ciudadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('ciudadId').value;
+            
+            const selectedEquipos = Array.from(document.querySelectorAll('#ciudadEquiposList input:checked')).map(el => el.value);
+            const selectedMonitores = Array.from(document.querySelectorAll('#ciudadMonitoresList input:checked')).map(el => el.value);
+
+            const data = {
+                ciudad: document.getElementById('ciudadNombre').value,
+                instructor: document.getElementById('ciudadInstructor').value,
+                fechaInicio: document.getElementById('ciudadFechaInicio').value,
+                fechaFin: document.getElementById('ciudadFechaFin').value,
+                equiposIds: selectedEquipos,
+                monitoresIds: selectedMonitores,
+            };
+
+            if (id) {
+                await updateDoc(doc(db, dbPaths.ciudades, id), data);
+            } else {
+                await addDoc(collection(db, dbPaths.ciudades), data);
+            }
+            closeModal('ciudadModal');
+        });
+    </script>
+</body>
+</html>
